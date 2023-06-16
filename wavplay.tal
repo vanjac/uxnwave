@@ -107,7 +107,7 @@ BRK
 	&at-end
 		#01 .at-end STZ
 		( fill end of buffer with zeroes )
-		[ [ .data-len/lo LDZ2 .play-pos/lo LDZ2 SUB2 ] ;filebuf ADD2 ] #0000 SWP2
+		[ ;filebuf-end [ .play-pos/lo LDZ2 .data-len/lo LDZ2 SUB2 ] SUB2 ] #0000 SWP2
 		&zeroloop ( 0000 ptr* )
 			STA2k INC2 INC2 DUP2 ;filebuf-end LTH2 ?&zeroloop
 	&not-at-end-hi
