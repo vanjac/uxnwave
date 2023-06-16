@@ -148,7 +148,7 @@ JMP2r
 			#02 ADD LDA2 SWP .data-len/hi STZ2
 			#00 JMP2r
 		&not-data
-		DUP2 #04 ADD LDA2 SWP ( chunk length TODO: check if larger than 64k )
+		DUP2 #04 ADD LDA2 SWP #fe AND ( chunk length, word-aligned TODO: check if larger than 64k )
 			.File0/length DEO2
 		DUP2 .File0/read DEO2
 		( TODO validate format chunk )
