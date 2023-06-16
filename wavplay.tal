@@ -1,0 +1,202 @@
+|00 @System |0e &debug |0f &state
+|10 @Console &vector |12 &read |17 &type |18 &write
+|20 @Screen &vector
+|30 @Audio0 |32 &position |3a &length |3c &addr |3e &volume |3f &pitch
+|40 @Audio1 |42 &position |4a &length |4c &addr |4e &volume |4f &pitch
+|50 @Audio2 |52 &position |5a &length |5c &addr |5e &volume |5f &pitch
+|60 @Audio3 |62 &position |6a &length |6c &addr |6e &volume |6f &pitch
+|a0 @File0 |a2 &success |a8 &name |aa &length |ac &read
+
+%BUFSIZE { #2000 } ( size of sample buffer for one audio device )
+%HBUFSIZE { #1000 } ( half buffer size )
+%DBUFSIZE { #4000 } ( double buffer size )
+
+|4000
+@filebuf $4000 @filebuf-end ( DBUFSIZE )
+@wavbuf-l-hi $2000 ( BUFSIZE )
+@wavbuf-r-hi $2000
+@wavbuf-l-lo $2000
+@wavbuf-r-lo $2000
+
+|0000
+@file-name $30
+@data-len &hi $2 &lo $2
+@play-pos &hi $2 &lo $2
+@buf $1 ( which half of the buffers should be written next 0/1 )
+@at-end $1
+
+|0100 @Reset ( -> file-name )
+	.Console/type DEI ?&no-usage
+		;usage-str print-str
+	&no-usage
+	;on-console .Console/vector DEO2
+	.file-name
+BRK
+
+@usage-str "Usage: 20 "wavplay.rom 20 "file.wav 0a00
+@play-str "Playing 2000
+
+@on-console ( file-name-zptr -> )
+	.Console/type DEI #03 GTH ?&done-args ( not supported in Uxn32! )
+	.Console/read DEI [ DUP #0a EQU ?&newline ] OVR STZ INC
+BRK
+&newline
+	POP
+&done-args
+	POP
+	#0000 .Console/vector DEO2
+
+	;file-name .File0/name DEO2
+	read-wav-header
+	;play-str print-str ;file-name print-str print-nl
+
+	DBUFSIZE .File0/length DEO2
+	#0000 read-wav-data ( fill buffers with initial data )
+	HBUFSIZE read-wav-data
+
+	#f0 .Audio0/volume DEO
+	#0f .Audio1/volume DEO
+	#10 .Audio2/volume DEO ( for playing lower 4 bits of 12-bit PCM )
+	#01 .Audio3/volume DEO
+	;wavbuf-l-hi .Audio0/addr DEO2
+	;wavbuf-r-hi .Audio1/addr DEO2
+	;wavbuf-l-lo .Audio2/addr DEO2
+	;wavbuf-r-lo .Audio3/addr DEO2
+	BUFSIZE DUP2k DUP2 .Audio0/length DEO2 .Audio1/length DEO2 .Audio2/length DEO2 .Audio3/length DEO2
+
+	;on-vblank .Screen/vector DEO2
+	play-all-channels
+BRK
+
+@play-all-channels ( -- )
+	#3c .Audio0/pitch OVR .Audio1/pitch OVR .Audio2/pitch OVR .Audio3/pitch
+		DEO DEO DEO DEO ( start them all as close together as possible )
+JMP2r
+
+@on-vblank ( -> )
+	( check if position has reached one half of the buffer, then load the other half )
+	.Audio0/position DEI2 HBUFSIZE LTH2
+	.buf LDZ ?&buf1
+( buf0 )
+	?&done
+	#01 .buf STZ
+	#0000 read-wav-data
+BRK
+&buf1
+	?&load-buf1
+&done
+BRK
+&load-buf1
+	#00 .buf STZ
+	HBUFSIZE read-wav-data
+BRK
+
+@read-wav-data ( out-offset* -- )
+	.at-end LDZ ?exit
+	;filebuf [ DUP2 .File0/read DEO2 ]
+
+	.play-pos/lo LDZ2 [ DUP2 DBUFSIZE ADD2 ]
+		DUP2 .play-pos/lo STZ2
+		LTH2 ?&no-carry
+			.play-pos/hi LDZ2 INC2 .play-pos/hi STZ2
+		&no-carry
+
+	.play-pos/hi LDZ2 .data-len/hi LDZ2 LTH2k ?&not-at-end-hi
+		GTH2 ?&at-end
+	.play-pos/lo LDZ2 .data-len/lo LDZ2 LTH2 ?&not-at-end-lo
+	&at-end
+		#01 .at-end STZ
+		( fill end of buffer with zeroes )
+		[ [ .data-len/lo LDZ2 .play-pos/lo LDZ2 SUB2 ] ;filebuf ADD2 ] #0000 SWP2
+		&zeroloop ( 0000 ptr* )
+			STA2k INC2 INC2 DUP2 ;filebuf-end LTH2 ?&zeroloop
+	&not-at-end-hi
+		POP2 POP2
+	&not-at-end-lo
+
+	( we're loading 16-bit PCM, interleaved stereo )
+	( so we need to de-interleave the channels, and copy the high/low bits to the hi/lo buffers )
+	SWP2
+	&loop ( in* out-offset* )
+		SWP2k LDA2
+			#80 ADD SWP2 ;wavbuf-l-hi ADD2 STAk
+			[ SWP2 SWP #04 SFT #80 ADD SWP2 ] DBUFSIZE ADD2 STA POP ( lo )
+		SWP2k INC2 INC2 LDA2
+			#80 ADD SWP2 ;wavbuf-r-hi ADD2 STAk
+			[ SWP2 SWP #04 SFT #80 ADD SWP2 ] DBUFSIZE ADD2 STA POP
+		SWP2 #0004 ADD2 SWP2 INC2
+		OVR2 ;filebuf-end LTH2 ?&loop
+	POP2 POP2
+JMP2r
+
+( skip to the data section )
+@read-wav-header ( -- )
+	#000c .File0/length DEO2
+	;filebuf [ DUP2 .File0/read DEO2 ]
+		.File0/success DEI2 #0000 EQU2 ?fail-empty
+		DUP2 LIT2 "RI LIT2 "FF fourcc-neq ?fail-format
+		#08 ADD LIT2 "WA LIT2 "VE fourcc-neq ?fail-format
+	&loop
+		read-wav-chunk ?&loop
+JMP2r
+
+@read-wav-chunk ( -- keep-reading? )
+	#0008 .File0/length DEO2
+	;filebuf [ DUP2 .File0/read DEO2 ]
+		DUP2 LIT2 "da LIT2 "ta fourcc-neq ?&not-data
+			#04 ADD LDA2k SWP .data-len/lo STZ2
+			#02 ADD LDA2 SWP .data-len/hi STZ2
+			#00 JMP2r
+		&not-data
+		DUP2 #04 ADD LDA2 SWP ( chunk length TODO: check if larger than 64k )
+			.File0/length DEO2
+		DUP2 .File0/read DEO2
+		( TODO validate format chunk )
+		( DUP2 LIT2 "fm LIT2 "t 20 fourcc-neq ?&not-fmt
+
+		&not-fmt )
+		POP2
+	#01
+JMP2r
+
+@fourcc-neq ( addr* val0* val1* -- bool )
+	ROT2 ROT2 OVR2 ( val1* addr* val0* addr* )
+	LDA2 NEQ2 ?&first-neq
+	INC2 INC2 LDA2 NEQ2
+JMP2r
+&first-neq
+	POP2 POP2 #01
+JMP2r
+
+@fail-empty ;&err !fail
+	&err "Empty 20 "or 20 "missing 20 "file 0a00
+@fail-format ;&err !fail
+	&err "Unrecognized 20 "format 0a00
+
+@fail ( msg* -- )
+	print-str
+	teardown
+	#01 .System/state DEO
+BRK
+
+@exit ( -- )
+	teardown
+	#80 .System/state DEO
+BRK
+
+@teardown ( -- )
+	#0000 [ DUP2 .Console/vector DEO2 ] .Screen/vector DEO2
+	#00 DUPk DUP .Audio0/volume DEO .Audio1/volume DEO .Audio2/volume DEO .Audio3/volume DEO
+	play-all-channels
+JMP2r
+
+@print-str ( str* -- )
+	&loop
+		LDAk .Console/write DEO
+		INC2 LDAk ?&loop
+	POP2
+JMP2r
+
+@print-nl ( -- )
+	#0a .Console/write DEO
+JMP2r
