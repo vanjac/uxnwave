@@ -53,10 +53,10 @@ BRK
 	#0000 read-wav-data ( fill buffers with initial data )
 	HBUFSIZE read-wav-data
 
-	#f0 .Audio0/volume DEO
-	#0f .Audio1/volume DEO
-	#10 .Audio2/volume DEO ( for playing lower 4 bits of 12-bit PCM )
-	#01 .Audio3/volume DEO
+	LIT2 f0 -Audio0/volume DEO
+	LIT2 0f -Audio1/volume DEO
+	LIT2 10 -Audio2/volume DEO ( for playing lower 4 bits of 12-bit PCM )
+	LIT2 01 -Audio3/volume DEO
 	;wavbuf-l-hi .Audio0/addr DEO2
 	;wavbuf-r-hi .Audio1/addr DEO2
 	;wavbuf-l-lo .Audio2/addr DEO2
@@ -69,7 +69,7 @@ BRK
 
 @play-all-channels ( length -- )
 	DUP2k DUP2 .Audio0/length DEO2 .Audio1/length DEO2 .Audio2/length DEO2 .Audio3/length DEO2
-	#3c .Audio0/pitch OVR .Audio1/pitch OVR .Audio2/pitch OVR .Audio3/pitch
+	LIT2 3c -Audio0/pitch OVR .Audio1/pitch OVR .Audio2/pitch OVR .Audio3/pitch
 		DEO DEO DEO DEO ( start them all as close together as possible )
 JMP2r
 
@@ -89,7 +89,7 @@ BRK
 	.buf LDZ ?&buf1
 ( buf0 )
 	?&done
-	#01 .buf STZ
+	LIT2 01 -buf STZ
 	#0000 read-wav-data
 BRK
 &buf1
@@ -97,7 +97,7 @@ BRK
 &done
 BRK
 &load-buf1
-	#00 .buf STZ
+	LIT2 00 -buf STZ
 	HBUFSIZE read-wav-data
 BRK
 
@@ -115,7 +115,7 @@ BRK
 		GTH2 ?&at-end
 	.play-pos/lo LDZ2 .data-len/lo LDZ2 LTH2 ?&not-at-end-lo
 	&at-end
-		#01 .at-end STZ
+		LIT2 01 -at-end STZ
 		( fill end of buffer with zeroes )
 		[ ;filebuf-end [ .play-pos/lo LDZ2 .data-len/lo LDZ2 SUB2 ] SUB2 ] #0000 SWP2
 		&zeroloop ( 0000 ptr* )
@@ -162,7 +162,7 @@ JMP2r
 		OVR #06 LDA2 #0000 NEQ2 ?fail-metadata ( chunk length larger than 64k )
 		OVR #04 LDA2 SWP #fe AND ( chunk length )
 			.File0/length DEO2
-		OVR #08 .File0/read DEO2
+		OVR LIT2 08 -File0/read DEO2
 		DUP2 LIT2 "fm LIT2 "t 20 fourcc-neq ?&not-fmt
 			( validate format chunk. all these values are byte-swapped little endian )
 			( #01 .System/debug DEO )
@@ -200,12 +200,12 @@ JMP2r
 	print: "Error: 2000
 	[ STH2r print-str POP2 ] print: 0a00
 	teardown
-	#01 .System/state DEO
+	LIT2 01 -System/state DEO
 BRK
 
 @exit ( -- )
 	teardown
-	#80 .System/state DEO
+	LIT2 80 -System/state DEO
 BRK
 
 @teardown ( -- )
