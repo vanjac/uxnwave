@@ -189,14 +189,14 @@ JMP2r
 	POP2 POP2 #01
 JMP2r
 
-@fail-empty fail "Empty 20 "or 20 "missing 20 "file 00
-@fail-format fail "Unrecognized 20 "format 00
-@fail-metadata fail "Unrecognized 20 "metadata 00
-@fail-audio-format fail "Unsupported 20 "audio 20 "format 00
-@fail-channels fail "WAV 20 "must 20 "be 20 "stereo 00
-@fail-bits fail "WAV 20 "must 20 "be 20 "16-bit 20 "PCM 00
+@fail-empty fail: "Empty 20 "or 20 "missing 20 "file 00
+@fail-format fail: "Unrecognized 20 "format 00
+@fail-metadata fail: "Unrecognized 20 "metadata 00
+@fail-audio-format fail: "Unsupported 20 "audio 20 "format 00
+@fail-channels fail: "WAV 20 "must 20 "be 20 "stereo 00
+@fail-bits fail: "WAV 20 "must 20 "be 20 "16-bit 20 "PCM 00
 
-@fail ( R.msg* -- )
+@fail: ( R.msg* -- )
 	print: "Error: 2000
 	[ STH2r print-str POP2 ] print: 0a00
 	teardown
