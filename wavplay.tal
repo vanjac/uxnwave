@@ -180,21 +180,15 @@ JMP2r
 	POP2 POP2 #01
 JMP2r
 
-@fail-empty ;&err !fail
-	&err "Empty 20 "or 20 "missing 20 "file 00
-@fail-format ;&err !fail
-	&err "Unrecognized 20 "format 00
-@fail-metadata ;&err !fail
-	&err "Unrecognized 20 "metadata 00
-@fail-audio-format ;&err !fail
-	&err "Unsupported 20 "audio 20 "format 00
-@fail-channels ;&err !fail
-	&err "WAV 20 "must 20 "be 20 "stereo 00
-@fail-bits ;&err !fail
-	&err "WAV 20 "must 20 "be 20 "16-bit 20 "PCM 00
+@fail-empty fail "Empty 20 "or 20 "missing 20 "file 00
+@fail-format fail "Unrecognized 20 "format 00
+@fail-metadata fail "Unrecognized 20 "metadata 00
+@fail-audio-format fail "Unsupported 20 "audio 20 "format 00
+@fail-channels fail "WAV 20 "must 20 "be 20 "stereo 00
+@fail-bits fail "WAV 20 "must 20 "be 20 "16-bit 20 "PCM 00
 
-@fail ( msg* -- )
-	[ ;&err-prefix print-str ] print-str print-nl
+@fail ( R.msg* -- )
+	[ ;&err-prefix print-str ] STH2r print-str print-nl
 	teardown
 	#01 .System/state DEO
 BRK
