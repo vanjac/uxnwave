@@ -159,18 +159,18 @@ JMP2r
 			#02 ADD LDA2 SWP .data-len/hi STZ2
 			#00 JMP2r
 		&not-data
-		DUP2 #06 ADD LDA2 #0000 NEQ2 ?fail-metadata ( chunk length larger than 64k )
-		DUP2 #04 ADD LDA2 SWP #fe AND ( chunk length )
+		OVR #06 LDA2 #0000 NEQ2 ?fail-metadata ( chunk length larger than 64k )
+		OVR #04 LDA2 SWP #fe AND ( chunk length )
 			.File0/length DEO2
-		DUP2 #08 ADD .File0/read DEO2
+		OVR #08 .File0/read DEO2
 		DUP2 LIT2 "fm LIT2 "t 20 fourcc-neq ?&not-fmt
 			( validate format chunk. all these values are byte-swapped little endian )
 			( #01 .System/debug DEO )
-			DUP2 #0a ADD LDA2 #0200 NEQ2 ?fail-channels ( nChannels )
-			DUP2 #16 ADD LDA2 #1000 NEQ2 ?fail-bits ( wBitsPerSample )
-			DUP2 #08 ADD LDA2 #0100 NEQ2 ?fail-audio-format ( wFormatTag )
-			DUP2 #0c ADD LDA2 #44ac NEQ2 ?&warn-sample-rate ( nSamplesPerSec )
-			DUP2 #0e ADD LDA2 #0000 NEQ2 ?&warn-sample-rate
+			OVR #0a LDA2 #0200 NEQ2 ?fail-channels ( nChannels )
+			OVR #16 LDA2 #1000 NEQ2 ?fail-bits ( wBitsPerSample )
+			OVR #08 LDA2 #0100 NEQ2 ?fail-audio-format ( wFormatTag )
+			OVR #0c LDA2 #44ac NEQ2 ?&warn-sample-rate ( nSamplesPerSec )
+			OVR #0e LDA2 #0000 NEQ2 ?&warn-sample-rate
 		&not-fmt
 		POP2
 	#01
