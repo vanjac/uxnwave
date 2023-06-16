@@ -27,14 +27,11 @@
 
 |0100 @Reset ( -> file-name )
 	.Console/type DEI ?&no-usage
-		;usage-str print-str
+		print: "Usage: 20 "wavplay.rom 20 "file.wav 0a00
 	&no-usage
 	;on-console .Console/vector DEO2
 	.file-name
 BRK
-
-@usage-str "Usage: 20 "wavplay.rom 20 "file.wav 0a00
-@play-str "Playing 2000
 
 @on-console ( file-name-zptr -> )
 	.Console/type DEI #03 GTH ?&done-args ( not supported in Uxn32! )
@@ -48,7 +45,8 @@ BRK
 
 	;file-name .File0/name DEO2
 	read-wav-header
-	;play-str print-str ;file-name print-str print-nl
+	print: "Playing 2000
+	[ ;file-name print-str POP2 ] print: 0a00
 
 	DBUFSIZE .File0/length DEO2
 	#0000 read-wav-data ( fill buffers with initial data )
@@ -166,10 +164,9 @@ JMP2r
 	#01
 JMP2r
 &warn-sample-rate
-	;&sample-rate-msg print-str
-	!&not-fmt
-	&sample-rate-msg "Warning: 20 "WAV 20 "sample 20 "rate 20 "is 20 "not 20 "44,100 20 "Hz. 0a
+	print: "Warning: 20 "WAV 20 "sample 20 "rate 20 "is 20 "not 20 "44,100 20 "Hz. 0a
 		2020 "Audio 20 "will 20 "play 20 "at 20 "incorrect 20 "speed! 0a00
+	!&not-fmt
 
 @fourcc-neq ( addr* val0* val1* -- bool )
 	ROT2 ROT2 OVR2 ( val1* addr* val0* addr* )
@@ -188,11 +185,11 @@ JMP2r
 @fail-bits fail "WAV 20 "must 20 "be 20 "16-bit 20 "PCM 00
 
 @fail ( R.msg* -- )
-	[ ;&err-prefix print-str ] STH2r print-str print-nl
+	print: "Error: 2000
+	[ STH2r print-str POP2 ] print: 0a00
 	teardown
 	#01 .System/state DEO
 BRK
-&err-prefix "Error: 2000
 
 @exit ( -- )
 	teardown
@@ -205,13 +202,13 @@ BRK
 	play-all-channels
 JMP2r
 
-@print-str ( str* -- )
+@print: ( R.str* -- )
+	STH2r
+	print-str
+	INC2 JMP2
+
+@print-str ( str* -- end* )
 	&loop
 		LDAk .Console/write DEO
 		INC2 LDAk ?&loop
-	POP2
-JMP2r
-
-@print-nl ( -- )
-	#0a .Console/write DEO
 JMP2r
