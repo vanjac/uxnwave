@@ -18,7 +18,7 @@ Pass the WAV file to be played as a command line argument:
 
 `uxn wavplay.rom file.wav`
 
-...and enjoy.
+Press Space to pause/resume playback.
 
 ## How it works
 
