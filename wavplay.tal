@@ -156,10 +156,10 @@ JMP2r
 	;filebuf [ DUP2 .File0/read DEO2 ]
 		DUP2 LIT2 "da LIT2 "ta fourcc-neq ?&not-data
 			#04 ADD LDA2k SWP .data-len/lo STZ2
-			#02 ADD LDA2 SWP .data-len/hi STZ2
+			INC INC LDA2 SWP .data-len/hi STZ2
 			#00 JMP2r
 		&not-data
-		OVR #06 LDA2 #0000 NEQ2 ?fail-metadata ( chunk length larger than 64k )
+		OVR #06 LDA2 ORA ?fail-metadata ( chunk length larger than 64k )
 		OVR #04 LDA2 SWP #fe AND ( chunk length )
 			.File0/length DEO2
 		OVR LIT2 08 -File0/read DEO2
@@ -170,7 +170,7 @@ JMP2r
 			OVR #16 LDA2 #1000 NEQ2 ?fail-bits ( wBitsPerSample )
 			OVR #08 LDA2 #0100 NEQ2 ?fail-audio-format ( wFormatTag )
 			OVR #0c LDA2 #44ac NEQ2 ?&warn-sample-rate ( nSamplesPerSec )
-			OVR #0e LDA2 #0000 NEQ2 ?&warn-sample-rate
+			OVR #0e LDA2 ORA ?&warn-sample-rate
 		&not-fmt
 		POP2
 	#01
@@ -210,8 +210,7 @@ BRK
 
 @teardown ( -- )
 	#0000 [ DUP2 .Console/vector DEO2 ] [ DUP2 .Screen/vector DEO2 ] .Controller/vector DEO2
-	#0000 play-all-channels
-JMP2r
+	#0000 !play-all-channels ( >> )
 
 @print: ( R.str* -- )
 	STH2r
