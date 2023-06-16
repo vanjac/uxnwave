@@ -5,6 +5,7 @@
 |40 @Audio1 |42 &position |4a &length |4c &addr |4e &volume |4f &pitch
 |50 @Audio2 |52 &position |5a &length |5c &addr |5e &volume |5f &pitch
 |60 @Audio3 |62 &position |6a &length |6c &addr |6e &volume |6f &pitch
+|80 @Controller &vector |83 &key
 |a0 @File0 |a2 &success |a8 &name |aa &length |ac &read
 
 %BUFSIZE { #2000 } ( size of sample buffer for one audio device )
@@ -60,16 +61,27 @@ BRK
 	;wavbuf-r-hi .Audio1/addr DEO2
 	;wavbuf-l-lo .Audio2/addr DEO2
 	;wavbuf-r-lo .Audio3/addr DEO2
-	BUFSIZE DUP2k DUP2 .Audio0/length DEO2 .Audio1/length DEO2 .Audio2/length DEO2 .Audio3/length DEO2
 
 	;on-vblank .Screen/vector DEO2
-	play-all-channels
+	;on-controller .Controller/vector DEO2
+	BUFSIZE play-all-channels
 BRK
 
-@play-all-channels ( -- )
+@play-all-channels ( length -- )
+	DUP2k DUP2 .Audio0/length DEO2 .Audio1/length DEO2 .Audio2/length DEO2 .Audio3/length DEO2
 	#3c .Audio0/pitch OVR .Audio1/pitch OVR .Audio2/pitch OVR .Audio3/pitch
 		DEO DEO DEO DEO ( start them all as close together as possible )
 JMP2r
+
+@on-controller ( -> )
+	.Controller/key DEI #20 NEQ ?&not-space
+		.Audio0/length DEI ?&is-playing
+			BUFSIZE play-all-channels
+			BRK
+		&is-playing
+			#0000 play-all-channels
+	&not-space
+BRK
 
 @on-vblank ( -> )
 	( check if position has reached one half of the buffer, then load the other half )
@@ -197,9 +209,8 @@ BRK
 BRK
 
 @teardown ( -- )
-	#0000 [ DUP2 .Console/vector DEO2 ] .Screen/vector DEO2
-	#00 DUPk DUP .Audio0/volume DEO .Audio1/volume DEO .Audio2/volume DEO .Audio3/volume DEO
-	play-all-channels
+	#0000 [ DUP2 .Console/vector DEO2 ] [ DUP2 .Screen/vector DEO2 ] .Controller/vector DEO2
+	#0000 play-all-channels
 JMP2r
 
 @print: ( R.str* -- )
