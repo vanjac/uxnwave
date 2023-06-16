@@ -131,6 +131,7 @@ JMP2r
 
 ( skip to the data section )
 @read-wav-header ( -- )
+	( https://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html )
 	#000c .File0/length DEO2
 	;filebuf [ DUP2 .File0/read DEO2 ]
 		.File0/success DEI2 #0000 EQU2 ?fail-empty
@@ -148,16 +149,27 @@ JMP2r
 			#02 ADD LDA2 SWP .data-len/hi STZ2
 			#00 JMP2r
 		&not-data
-		DUP2 #04 ADD LDA2 SWP #fe AND ( chunk length, word-aligned TODO: check if larger than 64k )
+		DUP2 #06 ADD LDA2 #0000 NEQ2 ?fail-metadata ( chunk length larger than 64k )
+		DUP2 #04 ADD LDA2 SWP #fe AND ( chunk length )
 			.File0/length DEO2
-		DUP2 .File0/read DEO2
-		( TODO validate format chunk )
-		( DUP2 LIT2 "fm LIT2 "t 20 fourcc-neq ?&not-fmt
-
-		&not-fmt )
+		DUP2 #08 ADD .File0/read DEO2
+		DUP2 LIT2 "fm LIT2 "t 20 fourcc-neq ?&not-fmt
+			( validate format chunk. all these values are byte-swapped little endian )
+			( #01 .System/debug DEO )
+			DUP2 #0a ADD LDA2 #0200 NEQ2 ?fail-channels ( nChannels )
+			DUP2 #16 ADD LDA2 #1000 NEQ2 ?fail-bits ( wBitsPerSample )
+			DUP2 #08 ADD LDA2 #0100 NEQ2 ?fail-audio-format ( wFormatTag )
+			DUP2 #0c ADD LDA2 #44ac NEQ2 ?&warn-sample-rate ( nSamplesPerSec )
+			DUP2 #0e ADD LDA2 #0000 NEQ2 ?&warn-sample-rate
+		&not-fmt
 		POP2
 	#01
 JMP2r
+&warn-sample-rate
+	;&sample-rate-msg print-str
+	!&not-fmt
+	&sample-rate-msg "Warning: 20 "WAV 20 "sample 20 "rate 20 "is 20 "not 20 "44,100 20 "Hz. 0a
+		2020 "Audio 20 "will 20 "play 20 "at 20 "incorrect 20 "speed! 0a00
 
 @fourcc-neq ( addr* val0* val1* -- bool )
 	ROT2 ROT2 OVR2 ( val1* addr* val0* addr* )
@@ -169,15 +181,24 @@ JMP2r
 JMP2r
 
 @fail-empty ;&err !fail
-	&err "Empty 20 "or 20 "missing 20 "file 0a00
+	&err "Empty 20 "or 20 "missing 20 "file 00
 @fail-format ;&err !fail
-	&err "Unrecognized 20 "format 0a00
+	&err "Unrecognized 20 "format 00
+@fail-metadata ;&err !fail
+	&err "Unrecognized 20 "metadata 00
+@fail-audio-format ;&err !fail
+	&err "Unsupported 20 "audio 20 "format 00
+@fail-channels ;&err !fail
+	&err "WAV 20 "must 20 "be 20 "stereo 00
+@fail-bits ;&err !fail
+	&err "WAV 20 "must 20 "be 20 "16-bit 20 "PCM 00
 
 @fail ( msg* -- )
-	print-str
+	[ ;&err-prefix print-str ] print-str print-nl
 	teardown
 	#01 .System/state DEO
 BRK
+&err-prefix "Error: 2000
 
 @exit ( -- )
 	teardown
