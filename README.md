@@ -8,7 +8,7 @@ This is only a proof of concept, eventually I will add playback controls and a G
 
 ## Usage
 
-Download the ROM [here], or build using uxnasm. drifblim will not work since it lacks macro support.
+Download the ROM [here](https://github.com/vanjac/uxnwave/releases/latest/download/wavplay.rom), or build using uxnasm. drifblim will not work since it lacks macro support.
 
 You'll need a Uxn emulator. [Uxn](https://100r.co/site/uxn.html) and [Uxn32](https://github.com/randrew/uxn32) have been tested, anything else may not work correctly.
 
