@@ -104,10 +104,10 @@ BRK
 	?&done
 	LIT2 01 -buf STZ
 	ZERO2 [ DUP2 read-wav-data ] draw-vis
+&done
 BRK
 &buf1
 	?&load-buf1
-&done
 BRK
 &load-buf1
 	LIT2 00 -buf STZ
@@ -139,9 +139,7 @@ JMP2r
 
 	.play-pos/lo LDZ2 [ DUP2 DBUFSIZE ADD2 ]
 		DUP2 .play-pos/lo STZ2
-		LTH2 ?&no-carry
-			.play-pos/hi LDZ2 INC2 .play-pos/hi STZ2
-		&no-carry
+		LTH2 ?&no-carry [ .play-pos/hi LDZ2k INC2 ROT STZ2 ] &no-carry
 
 	.play-pos/hi LDZ2 .data-len/hi LDZ2 LTH2k ?&not-at-end-hi
 		GTH2 ?&at-end
@@ -218,15 +216,14 @@ JMP2r
 			OVR #16 LDA2 #1000 NEQ2 ?fail-bits ( wBitsPerSample )
 			OVR #08 LDA2 #0100 NEQ2 ?fail-audio-format ( wFormatTag )
 			OVR #0c LDA2 #44ac NEQ2 ?&warn-sample-rate ( nSamplesPerSec )
-			OVR #0e LDA2 ORA ?&warn-sample-rate
+			OVR #0e LDA2 ZERO2 EQU2 ?&not-fmt
+				&warn-sample-rate
+				print: "Warning: 20 "WAV 20 "sample 20 "rate 20 "is 20 "not 20 "44,100 20 "Hz. 0a
+					2020 "Audio 20 "will 20 "play 20 "at 20 "incorrect 20 "speed! 0a00
 		&not-fmt
 		POP2
 	#01
 JMP2r
-&warn-sample-rate
-	print: "Warning: 20 "WAV 20 "sample 20 "rate 20 "is 20 "not 20 "44,100 20 "Hz. 0a
-		2020 "Audio 20 "will 20 "play 20 "at 20 "incorrect 20 "speed! 0a00
-	!&not-fmt
 
 @fourcc-neq ( addr* val0* val1* -- bool )
 	ROT2 ROT2 OVR2 ( val1* addr* val0* addr* )
