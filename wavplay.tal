@@ -1,6 +1,6 @@
-|00 @System |0e &debug |0f &state
+|00 @System |08 &r |0a &g |0c &b |0e &debug |0f &state
 |10 @Console &vector |12 &read |17 &type |18 &write
-|20 @Screen &vector
+|20 @Screen &vector |22 &width |24 &height |26 &auto |28 &x |2a &y |2e &pixel
 |30 @Audio0 |32 &position |3a &length |3c &addr |3e &volume |3f &pitch
 |40 @Audio1 |42 &position |4a &length |4c &addr |4e &volume |4f &pitch
 |50 @Audio2 |52 &position |5a &length |5c &addr |5e &volume |5f &pitch
@@ -44,6 +44,12 @@ BRK
 	POP
 	#0000 .Console/vector DEO2
 
+	#0100 .Screen/width DEO2
+	#0020 .Screen/height DEO2
+	#5f7f .System/r DEO2
+	#7fe0 .System/g DEO2
+	#afc0 .System/b DEO2
+
 	;file-name .File0/name DEO2
 	read-wav-header
 	print: "Playing 2000
@@ -61,6 +67,9 @@ BRK
 	;wavbuf-r-hi .Audio1/addr DEO2
 	;wavbuf-l-lo .Audio2/addr DEO2
 	;wavbuf-r-lo .Audio3/addr DEO2
+
+	[ #0000 .Screen/x DEO2 ] [ #0010 .Screen/y DEO2 ] [ LIT2 01 -Screen/auto DEO ]
+	#01 #0100 draw-line
 
 	;on-vblank .Screen/vector DEO2
 	;on-controller .Controller/vector DEO2
@@ -91,6 +100,7 @@ BRK
 	?&done
 	LIT2 01 -buf STZ
 	#0000 read-wav-data
+	draw-vis
 BRK
 &buf1
 	?&load-buf1
@@ -99,7 +109,19 @@ BRK
 &load-buf1
 	LIT2 00 -buf STZ
 	HBUFSIZE read-wav-data
+	draw-vis
 BRK
+
+@draw-vis ( -- )
+	[ #0000 .Screen/x DEO2 ] [ #0008 .Screen/y DEO2 ]
+	#0100 #0010 #40 fill-rect ( clear playhead )
+	.data-len/hi LDZ2 INC2 INC2 #02 SFT2 ORAk ?&draw-time ( avoid div/0 )
+JMP2r
+&draw-time ( data-len/hi>>2 )
+	[ [ .play-pos/hi LDZ2 #40 SFT2 ] [ .play-pos/lo LDZ2 #0c SFT2 ] ADD2 ]
+		SWP2 DIV2 #20 SFT2 .Screen/x DEO2
+	[ #0008 .Screen/y DEO2 ] [ LIT2 02 -Screen/auto DEO ]
+	#41 #0010 !draw-line ( >> )
 
 @read-wav-data ( out-offset* -- )
 	.at-end LDZ ?exit
@@ -209,8 +231,8 @@ BRK
 BRK
 
 @teardown ( -- )
-	#0000 [ DUP2 .Console/vector DEO2 ] [ DUP2 .Screen/vector DEO2 ] .Controller/vector DEO2
-	#0000 !play-all-channels ( >> )
+	#0000 [ DUP2 .Console/vector DEO2 ] [ DUP2 .Screen/vector DEO2 ] [ DUP2 .Controller/vector DEO2 ]
+		!play-all-channels ( >> )
 
 @print: ( R.str* -- )
 	STH2r
@@ -221,4 +243,24 @@ BRK
 	&loop
 		LDAk .Console/write DEO
 		INC2 LDAk ?&loop
+JMP2r
+
+@draw-line ( pix length* -- )
+	[ DUP2k EOR2 ( 0000 ) ] SWP2 SUB2 ( make negative )
+	&loop ( col -length* )
+		ROT [ DUP .Screen/pixel DEO ] ROT ROT
+		INC2 ORAk ?&loop
+	POP2 POP
+JMP2r
+
+@fill-rect ( width* height* pix -- )
+	LIT2 01 -Screen/auto DEO
+	DUP SWP2
+	[ DUP2k EOR2 ( 0000 ) ] SWP2 SUB2 ( make negative )
+	&loop ( width* pix pix -height* )
+		ROT2 ROT2 SWP2k draw-line POP
+			OVR2 .Screen/x DEI2 SWP2 SUB2 .Screen/x DEO2
+		.Screen/y DEI2k INC2 ROT DEO2
+		ROT2 INC2 ORAk ?&loop
+	POP2 POP2 POP2
 JMP2r
