@@ -184,7 +184,7 @@ JMP2r
 		&gth POPr
 		SWP2 INC2 SWP2 INC2 ORAk ?&loop
 	POP2 POP2
-	STHr #10 SFT
+	STHr DUP ADD
 JMP2r
 
 ( skip to the data section )
