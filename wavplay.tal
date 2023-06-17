@@ -8,6 +8,8 @@
 |80 @Controller &vector |83 &key
 |a0 @File0 |a2 &success |a8 &name |aa &length |ac &read
 
+%ZERO2 { DUP2k EOR2 } ( equivalent to #0000. requires 2 bytes on the stack already! )
+
 %BUFSIZE { #2000 } ( size of sample buffer for one audio device )
 %HBUFSIZE { #1000 } ( half buffer size )
 %DBUFSIZE { #4000 } ( double buffer size )
@@ -139,8 +141,7 @@ JMP2r
 	&at-end
 		LIT2 01 -at-end STZ
 		( fill end of buffer with zeroes )
-		[ ;filebuf-end [ .play-pos/lo LDZ2 .data-len/lo LDZ2 SUB2 ] SUB2 ]
-			[ DUP2k EOR2 ( 0000 ) ] SWP2
+		[ ;filebuf-end [ .play-pos/lo LDZ2 .data-len/lo LDZ2 SUB2 ] SUB2 ] ZERO2 SWP2
 		&zeroloop ( 0000 ptr* )
 			STA2k INC2 INC2 DUP2 ;filebuf-end LTH2 ?&zeroloop
 	&not-at-end-hi
@@ -167,7 +168,7 @@ JMP2r
 	( https://www-mmsp.ece.mcgill.ca/Documents/AudioFormats/WAVE/WAVE.html )
 	#000c .File0/length DEO2
 	;filebuf [ DUP2 .File0/read DEO2 ]
-		.File0/success DEI2 [ DUP2k EOR2 ( 0000 ) ] EQU2 ?fail-empty
+		.File0/success DEI2 ZERO2 EQU2 ?fail-empty
 		DUP2 LIT2 "RI LIT2 "FF fourcc-neq ?fail-format
 		#08 ADD LIT2 "WA LIT2 "VE fourcc-neq ?fail-format
 	&loop
@@ -247,7 +248,7 @@ BRK
 JMP2r
 
 @draw-line ( pix length* -- )
-	[ DUP2k EOR2 ( 0000 ) ] SWP2 SUB2 ( make negative )
+	ZERO2 SWP2 SUB2 ( make negative )
 	&loop ( col -length* )
 		ROT [ DUP .Screen/pixel DEO ] ROT ROT
 		INC2 ORAk ?&loop
@@ -257,7 +258,7 @@ JMP2r
 @fill-rect ( width* height* pix -- )
 	LIT2 01 -Screen/auto DEO
 	DUP SWP2
-	[ DUP2k EOR2 ( 0000 ) ] SWP2 SUB2 ( make negative )
+	ZERO2 SWP2 SUB2 ( make negative )
 	&loop ( width* pix pix -height* )
 		ROT2 ROT2 SWP2k draw-line POP
 			OVR2 .Screen/x DEI2 SWP2 SUB2 .Screen/x DEO2
