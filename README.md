@@ -4,7 +4,7 @@ WAV audio player for [Uxn](https://100r.co/site/uxn.html).
 
 uxnwave can play files much larger than Uxn's 64k address space, and can output "high-quality" 12-bit PCM audio using some trickery.
 
-This is only a proof of concept, eventually I will add playback controls and a GUI.
+This is only a proof of concept, eventually I will add a better GUI.
 
 ## Usage
 
@@ -18,7 +18,9 @@ Pass the WAV file to be played as a command line argument:
 
 `uxn wavplay.rom file.wav`
 
-Press Space to pause/resume playback.
+- Press Space to pause/resume playback.
+- Press Left to restart from the beginning
+- Click anywhere to skip forward/backward
 
 ## How it works
 
