@@ -1,11 +1,12 @@
 |00 @System |08 &r |0a &g |0c &b |0e &debug |0f &state
 |10 @Console &vector |12 &read |17 &type |18 &write
-|20 @Screen &vector |22 &width |24 &height |26 &auto |28 &x |2a &y |2e &pixel
+|20 @Screen &vector |22 &width |24 &height |26 &auto |28 &x |2a &y |2c &addr |2e &pixel |2f &sprite
 |30 @Audio0 |32 &position |3a &length |3c &addr |3e &volume |3f &pitch
 |40 @Audio1 |42 &position |4a &length |4c &addr |4e &volume |4f &pitch
 |50 @Audio2 |52 &position |5a &length |5c &addr |5e &volume |5f &pitch
 |60 @Audio3 |62 &position |6a &length |6c &addr |6e &volume |6f &pitch
 |80 @Controller &vector |82 &button |83 &key
+|90 @Mouse &vector |92 &x |94 &y |96 &state
 |a0 @File0 |a2 &success |a8 &name |aa &length |ac &read
 
 %ZERO2 { DUP2k EOR2 } ( equivalent to #0000. requires 2 bytes already on the stack! )
@@ -28,6 +29,7 @@
 @play-pos &hi $2 &lo $2
 @buf $1 ( which half of the buffers should be written next 0/1 )
 @at-end $1
+@pointer &x $2 &y $2
 
 |0100 @Reset ( -> file-name )
 	#0000 ( useful for ZERO2 macro )
@@ -70,11 +72,9 @@ BRK
 	;wavbuf-l-lo .Audio2/addr DEO2
 	;wavbuf-r-lo .Audio3/addr DEO2
 
-	[ ZERO2 .Screen/x DEO2 ] [ #0010 .Screen/y DEO2 ] [ LIT2 01 -Screen/auto DEO ]
-	#0100 #01 draw-line
-
 	;on-vblank .Screen/vector DEO2
 	;on-controller .Controller/vector DEO2
+	;on-mouse .Mouse/vector DEO2
 	BUFSIZE play-all-channels
 BRK
 
@@ -101,14 +101,27 @@ JMP2r
 			BRK
 	&not-space
 	.Controller/button DEI #40 NEQ ?&not-left
-		restart-file
-		.Audio0/length DEI ?&not-left
-			( currently stopped )
-			ZERO2 DUP2 read-wav-data
-			HBUFSIZE read-wav-data
-			LIT2 00 -buf STZ
-			draw-vis
+		ZERO2 skip-to
 	&not-left
+BRK
+
+@on-mouse ( -> )
+	;pointer-icn .Screen/addr DEO2
+	( clear cursor )
+	.pointer/x LDZ2 .Screen/x DEO2
+	.pointer/y LDZ2 .Screen/y DEO2
+	LIT2 40 -Screen/sprite DEO
+	( draw cursor )
+	.Mouse/x DEI2 [ DUP2 .pointer/x STZ2 ] .Screen/x DEO2
+	.Mouse/y DEI2 [ DUP2 .pointer/y STZ2 ] .Screen/y DEO2
+	LIT2 42 -Screen/sprite DEO
+
+	.Mouse/state DEI #01 NEQ ?&not-pressed
+		.data-len/hi LDZ2 ZERO2 ( h l 0 0 ) ROT SWP2 SWP ( 0 l 0 h )
+			.Mouse/x DEI2 MUL2
+			SWP2 .Mouse/x DEI2 MUL2 #08 SFT2 ADD2
+			skip-to
+	&not-pressed
 BRK
 
 @on-vblank ( -> )
@@ -141,7 +154,9 @@ BRK
 	#0030 .Screen/y DEO2
 	;wavbuf-r-hi ADD2 channel-level #00 SWP #0008 #01 fill-rect
 	#0008 .Screen/y DEO2
-	#0100 #0010 #40 fill-rect ( clear playhead area )
+	#0100 #0010 #00 fill-rect ( clear playhead area )
+	[ #0010 .Screen/y DEO2 ] [ LIT2 01 -Screen/auto DEO ]
+	#0100 #01 draw-line
 	.data-len/hi LDZ2 INC2 INC2 #02 SFT2 ORAk ?&draw-time ( avoid div/0 )
 	POP2
 JMP2r
@@ -149,15 +164,11 @@ JMP2r
 	[ [ .play-pos/hi LDZ2 #40 SFT2 ] [ .play-pos/lo LDZ2 #0c SFT2 ] ADD2 ]
 		SWP2 DIV2 #20 SFT2 .Screen/x DEO2
 	[ #0008 .Screen/y DEO2 ] [ LIT2 02 -Screen/auto DEO ]
-	#0010 #41 !draw-line ( >> )
+	#0010 #01 !draw-line ( >> )
 
 @read-wav-data ( out-offset* -- )
 	.at-end LDZ ?exit
-	;filebuf [ DUP2 .File0/read DEO2 ]
-
-	.play-pos/lo LDZ2 [ DUP2 DBUFSIZE ADD2 ]
-		DUP2 .play-pos/lo STZ2
-		LTH2 ?&no-carry [ .play-pos/hi LDZ2k INC2 ROT STZ2 ] &no-carry
+	read-next
 
 	.play-pos/hi LDZ2 .data-len/hi LDZ2 LTH2k ?&not-at-end-hi
 		GTH2 ?&at-end
@@ -185,6 +196,33 @@ JMP2r
 		SWP2 #0004 ADD2 SWP2 INC2
 		OVR2 ;filebuf-end LTH2 ?&loop
 	POP2 POP2
+JMP2r
+
+@read-next ( -- buf* )
+	;filebuf [ DUP2 .File0/read DEO2 ]
+	.play-pos/lo LDZ2 [ DUP2 DBUFSIZE ADD2 ]
+		DUP2 .play-pos/lo STZ2
+		LTH2 ?&no-carry [ .play-pos/hi LDZ2k INC2 ROT STZ2 ] &no-carry
+JMP2r
+
+@skip-to ( hi* -- )
+	DUP2 .data-len/hi LDZ2 GTH2 ?&done-loop
+	DUP2 .play-pos/hi LDZ2 GTH2 ?&dont-restart
+		restart-file
+		DUP2 ZERO2 EQU2 ?&done-loop
+	&dont-restart
+	&loop
+		read-next POP2
+		DUP2 .play-pos/hi LDZ2 GTH2 ?&loop
+	&done-loop
+	POP2
+
+	.Audio0/length DEI ?&is-playing
+		ZERO2 DUP2 read-wav-data
+		HBUFSIZE read-wav-data
+		LIT2 00 -buf STZ
+		draw-vis
+	&is-playing
 JMP2r
 
 @channel-level ( buf* -- level )
@@ -272,7 +310,9 @@ BRK
 BRK
 
 @teardown ( -- )
-	ZERO2 [ DUP2 .Console/vector DEO2 ] [ DUP2 .Screen/vector DEO2 ] [ DUP2 .Controller/vector DEO2 ]
+	ZERO2 
+		[ DUP2 .Console/vector DEO2 ] [ DUP2 .Screen/vector DEO2 ]
+		[ DUP2 .Controller/vector DEO2 ] [ DUP2 .Mouse/vector DEO2 ]
 		!play-all-channels ( >> )
 
 @print: ( R.str* -- )
@@ -306,3 +346,6 @@ JMP2r
 		INC2 ORAk ?&loop
 	POP2 POP2 POPr
 JMP2r
+
+@pointer-icn ( credit: Devine Lu Linvega )
+	80c0 e0f0 f8e0 1000
