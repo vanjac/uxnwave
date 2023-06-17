@@ -5,7 +5,7 @@
 |40 @Audio1 |42 &position |4a &length |4c &addr |4e &volume |4f &pitch
 |50 @Audio2 |52 &position |5a &length |5c &addr |5e &volume |5f &pitch
 |60 @Audio3 |62 &position |6a &length |6c &addr |6e &volume |6f &pitch
-|80 @Controller &vector |83 &key
+|80 @Controller &vector |82 &button |83 &key
 |a0 @File0 |a2 &success |a8 &name |aa &length |ac &read
 
 %ZERO2 { DUP2k EOR2 } ( equivalent to #0000. requires 2 bytes already on the stack! )
@@ -54,12 +54,10 @@ BRK
 	#7fe0 .System/g DEO2
 	#afc0 .System/b DEO2
 
-	;file-name .File0/name DEO2
-	read-wav-header
+	restart-file
 	print: "Playing 2000
 	[ ;file-name print-str POP2 ] print: 0a00
 
-	DBUFSIZE .File0/length DEO2
 	ZERO2 read-wav-data ( fill buffers with initial data )
 	HBUFSIZE read-wav-data
 
@@ -80,6 +78,13 @@ BRK
 	BUFSIZE play-all-channels
 BRK
 
+@restart-file ( -- )
+	;file-name .File0/name DEO2
+	read-wav-header
+	DBUFSIZE .File0/length DEO2
+	ZERO2 DUP2 .play-pos/hi STZ2 .play-pos/lo STZ2
+JMP2r
+
 @play-all-channels ( length -- )
 	DUP2k DUP2 .Audio0/length DEO2 .Audio1/length DEO2 .Audio2/length DEO2 .Audio3/length DEO2
 	LIT2 3c -Audio0/pitch OVR .Audio1/pitch OVR .Audio2/pitch OVR .Audio3/pitch
@@ -93,10 +98,23 @@ JMP2r
 			BRK
 		&is-playing
 			ZERO2 play-all-channels
+			BRK
 	&not-space
+	.Controller/button DEI #40 NEQ ?&not-left
+		restart-file
+		.Audio0/length DEI ?&not-left
+			( currently stopped )
+			ZERO2 DUP2 read-wav-data
+			HBUFSIZE read-wav-data
+			LIT2 00 -buf STZ
+			draw-vis
+	&not-left
 BRK
 
 @on-vblank ( -> )
+	.Audio0/length DEI ?&is-playing
+BRK
+&is-playing
 	( check if position has reached one half of the buffer, then load the other half )
 	.Audio0/position DEI2 HBUFSIZE LTH2
 	.buf LDZ ?&buf1
