@@ -8,7 +8,7 @@
 |80 @Controller &vector |83 &key
 |a0 @File0 |a2 &success |a8 &name |aa &length |ac &read
 
-%ZERO2 { DUP2k EOR2 } ( equivalent to #0000. requires 2 bytes on the stack already! )
+%ZERO2 { DUP2k EOR2 } ( equivalent to #0000. requires 2 bytes already on the stack! )
 
 %BUFSIZE { #2000 } ( size of sample buffer for one audio device )
 %HBUFSIZE { #1000 } ( half buffer size )
@@ -30,6 +30,7 @@
 @at-end $1
 
 |0100 @Reset ( -> file-name )
+	#0000 ( useful for ZERO2 macro )
 	.Console/type DEI ?&no-usage
 		print: "Usage: 20 "wavplay.rom 20 "file.wav 0a00
 	&no-usage
@@ -45,7 +46,7 @@ BRK
 	POP
 &done-args
 	POP
-	#0000 .Console/vector DEO2
+	ZERO2 .Console/vector DEO2
 
 	#0100 .Screen/width DEO2
 	#0040 .Screen/height DEO2
@@ -59,7 +60,7 @@ BRK
 	[ ;file-name print-str POP2 ] print: 0a00
 
 	DBUFSIZE .File0/length DEO2
-	#0000 read-wav-data ( fill buffers with initial data )
+	ZERO2 read-wav-data ( fill buffers with initial data )
 	HBUFSIZE read-wav-data
 
 	LIT2 f0 -Audio0/volume DEO
@@ -71,7 +72,7 @@ BRK
 	;wavbuf-l-lo .Audio2/addr DEO2
 	;wavbuf-r-lo .Audio3/addr DEO2
 
-	[ #0000 .Screen/x DEO2 ] [ #0010 .Screen/y DEO2 ] [ LIT2 01 -Screen/auto DEO ]
+	[ ZERO2 .Screen/x DEO2 ] [ #0010 .Screen/y DEO2 ] [ LIT2 01 -Screen/auto DEO ]
 	#0100 #01 draw-line
 
 	;on-vblank .Screen/vector DEO2
@@ -91,7 +92,7 @@ JMP2r
 			BUFSIZE play-all-channels
 			BRK
 		&is-playing
-			#0000 play-all-channels
+			ZERO2 play-all-channels
 	&not-space
 BRK
 
@@ -102,7 +103,7 @@ BRK
 ( buf0 )
 	?&done
 	LIT2 01 -buf STZ
-	#0000 [ DUP2 read-wav-data ] draw-vis
+	ZERO2 [ DUP2 read-wav-data ] draw-vis
 BRK
 &buf1
 	?&load-buf1
@@ -114,7 +115,7 @@ BRK
 BRK
 
 @draw-vis ( offset* -- )
-	[ #0000 .Screen/x DEO2 ] #0028 [ DUP2 .Screen/y DEO2 ]
+	[ ZERO2 .Screen/x DEO2 ] #0028 [ DUP2 .Screen/y DEO2 ]
 		#0100 #0010 #00 fill-rect ( clear VU area )
 		.Screen/y DEO2
 	( VU meters )
@@ -256,7 +257,7 @@ BRK
 BRK
 
 @teardown ( -- )
-	#0000 [ DUP2 .Console/vector DEO2 ] [ DUP2 .Screen/vector DEO2 ] [ DUP2 .Controller/vector DEO2 ]
+	ZERO2 [ DUP2 .Console/vector DEO2 ] [ DUP2 .Screen/vector DEO2 ] [ DUP2 .Controller/vector DEO2 ]
 		!play-all-channels ( >> )
 
 @print: ( R.str* -- )
