@@ -72,7 +72,7 @@ BRK
 	;wavbuf-r-lo .Audio3/addr DEO2
 
 	[ #0000 .Screen/x DEO2 ] [ #0010 .Screen/y DEO2 ] [ LIT2 01 -Screen/auto DEO ]
-	#01 #0100 draw-line
+	#0100 #01 draw-line
 
 	;on-vblank .Screen/vector DEO2
 	;on-controller .Controller/vector DEO2
@@ -130,7 +130,7 @@ JMP2r
 	[ [ .play-pos/hi LDZ2 #40 SFT2 ] [ .play-pos/lo LDZ2 #0c SFT2 ] ADD2 ]
 		SWP2 DIV2 #20 SFT2 .Screen/x DEO2
 	[ #0008 .Screen/y DEO2 ] [ LIT2 02 -Screen/auto DEO ]
-	#41 #0010 !draw-line ( >> )
+	#0010 #41 !draw-line ( >> )
 
 @read-wav-data ( out-offset* -- )
 	.at-end LDZ ?exit
@@ -270,22 +270,23 @@ BRK
 		INC2 LDAk ?&loop
 JMP2r
 
-@draw-line ( pix length* -- )
+@draw-line ( length* pix -- )
+	STH
 	ZERO2 SWP2 SUB2 ( make negative )
-	&loop ( col -length* )
-		ROT [ DUP .Screen/pixel DEO ] ROT ROT
+	&loop ( -length* [ pix ] )
+		DUPr LITr -Screen/pixel DEOr
 		INC2 ORAk ?&loop
-	POP2 POP
+	POP2 POPr
 JMP2r
 
 @fill-rect ( width* height* pix -- )
 	LIT2 01 -Screen/auto DEO
-	DUP SWP2
+	STH
 	ZERO2 SWP2 SUB2 ( make negative )
-	&loop ( width* pix pix -height* )
-		ROT2 ROT2 SWP2k draw-line POP
-			OVR2 .Screen/x DEI2 SWP2 SUB2 .Screen/x DEO2
+	&loop ( width* -height* [ pix ] )
+		OVR2 STHkr draw-line
+		OVR2 .Screen/x DEI2 SWP2 SUB2 .Screen/x DEO2
 		.Screen/y DEI2k INC2 ROT DEO2
-		ROT2 INC2 ORAk ?&loop
-	POP2 POP2 POP2
+		INC2 ORAk ?&loop
+	POP2 POP2 POPr
 JMP2r
