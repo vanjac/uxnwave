@@ -190,7 +190,6 @@ JMP2r
 		OVR LIT2 08 -File0/read DEO2
 		DUP2 LIT2 "fm LIT2 "t 20 fourcc-neq ?&not-fmt
 			( validate format chunk. all these values are byte-swapped little endian )
-			( #01 .System/debug DEO )
 			OVR #0a LDA2 #0200 NEQ2 ?fail-channels ( nChannels )
 			OVR #16 LDA2 #1000 NEQ2 ?fail-bits ( wBitsPerSample )
 			OVR #08 LDA2 #0100 NEQ2 ?fail-audio-format ( wFormatTag )
