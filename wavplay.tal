@@ -13,6 +13,7 @@
 %BUFSIZE { #2000 } ( size of sample buffer for one audio device )
 %HBUFSIZE { #1000 } ( half buffer size )
 %DBUFSIZE { #4000 } ( double buffer size )
+%NHBUFSIZE { #f000 } ( negative half buffer size )
 
 |4000
 @filebuf $4000 @filebuf-end ( DBUFSIZE )
@@ -47,7 +48,7 @@ BRK
 	#0000 .Console/vector DEO2
 
 	#0100 .Screen/width DEO2
-	#0020 .Screen/height DEO2
+	#0040 .Screen/height DEO2
 	#5f7f .System/r DEO2
 	#7fe0 .System/g DEO2
 	#afc0 .System/b DEO2
@@ -101,8 +102,7 @@ BRK
 ( buf0 )
 	?&done
 	LIT2 01 -buf STZ
-	#0000 read-wav-data
-	draw-vis
+	#0000 [ DUP2 read-wav-data ] draw-vis
 BRK
 &buf1
 	?&load-buf1
@@ -110,13 +110,19 @@ BRK
 BRK
 &load-buf1
 	LIT2 00 -buf STZ
-	HBUFSIZE read-wav-data
-	draw-vis
+	HBUFSIZE [ DUP2 read-wav-data ] draw-vis
 BRK
 
-@draw-vis ( -- )
-	[ #0000 .Screen/x DEO2 ] [ #0008 .Screen/y DEO2 ]
-	#0100 #0010 #40 fill-rect ( clear playhead )
+@draw-vis ( offset* -- )
+	[ #0000 .Screen/x DEO2 ] #0028 [ DUP2 .Screen/y DEO2 ]
+		#0100 #0010 #00 fill-rect ( clear VU area )
+		.Screen/y DEO2
+	( VU meters )
+	DUP2 ;wavbuf-l-hi ADD2 channel-level #00 SWP #0008 #01 fill-rect
+	#0030 .Screen/y DEO2
+	;wavbuf-r-hi ADD2 channel-level #00 SWP #0008 #01 fill-rect
+	#0008 .Screen/y DEO2
+	#0100 #0010 #40 fill-rect ( clear playhead area )
 	.data-len/hi LDZ2 INC2 INC2 #02 SFT2 ORAk ?&draw-time ( avoid div/0 )
 	POP2
 JMP2r
@@ -162,6 +168,23 @@ JMP2r
 		SWP2 #0004 ADD2 SWP2 INC2
 		OVR2 ;filebuf-end LTH2 ?&loop
 	POP2 POP2
+JMP2r
+
+@channel-level ( buf* -- level )
+	LITr 00
+	NHBUFSIZE
+	&loop ( buf* -i* [ max ] )
+		OVR2 LDA
+			DUP #80 GTH ?&pos
+				#00 SWP SUB
+			&pos
+			#80 SUB STH
+		GTHkr LITr _&gth JCNr
+			SWPr
+		&gth POPr
+		SWP2 INC2 SWP2 INC2 ORAk ?&loop
+	POP2 POP2
+	STHr #10 SFT
 JMP2r
 
 ( skip to the data section )
