@@ -118,6 +118,7 @@ BRK
 	[ #0000 .Screen/x DEO2 ] [ #0008 .Screen/y DEO2 ]
 	#0100 #0010 #40 fill-rect ( clear playhead )
 	.data-len/hi LDZ2 INC2 INC2 #02 SFT2 ORAk ?&draw-time ( avoid div/0 )
+	POP2
 JMP2r
 &draw-time ( data-len/hi>>2 )
 	[ [ .play-pos/hi LDZ2 #40 SFT2 ] [ .play-pos/lo LDZ2 #0c SFT2 ] ADD2 ]
