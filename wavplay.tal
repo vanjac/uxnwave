@@ -31,11 +31,11 @@
 @at-end $1
 @pointer &x $2 &y $2
 
-|0100 @Reset ( -> file-name-zptr )
+|0100 @Reset ( -> 0* file-name-zptr )
 	#0000 ( useful for ZERO2 macro )
 	.Console/type DEI ?&no-usage
 		print: "Usage: 20 "wavplay.rom 20 "file.wav 0a00
-	&no-usage
+	&no-usage ( 0* ~> 0* file-name-zptr )
 	;on-console .Console/vector DEO2
 	.file-name
 BRK
@@ -44,7 +44,7 @@ BRK
 	.Console/type DEI #03 GTH ?&done-args ( not supported in Uxn32! )
 	.Console/read DEI [ DUP #0a EQU ?&newline ] OVR STZ INC
 BRK
-&newline ( file-name-zptr char ~> file-name-zptr )
+&newline ( file-name-zptr char ~+ file-name-zptr )
 	POP
 &done-args ( file-name-zptr ~> )
 	POP
@@ -196,13 +196,13 @@ JMP2r
 	.play-pos/hi LDZ2 .data-len/hi LDZ2 LTH2k ?&not-at-end-hi
 		GTH2 ?&at-end
 	.play-pos/lo LDZ2 .data-len/lo LDZ2 LTH2 ?&not-at-end-lo
-	&at-end ( ~- )
+	&at-end ( ~+ )
 		LIT2 01 -at-end STZ
 		( fill end of buffer with zeroes )
 		[ ;filebuf-end [ .play-pos/lo LDZ2 .data-len/lo LDZ2 SUB2 ] SUB2 ] ZERO2 SWP2
-		&zeroloop ( 0* ptr* ~- 0* ptr* )
+		&zeroloop ( 0* ptr* ~+ 0* ptr* )
 			STA2k INC2 INC2 DUP2 ;filebuf-end LTH2 ?&zeroloop
-	&not-at-end-hi ( a* b* ~- )
+	&not-at-end-hi ( a* b* ~+ )
 		POP2 POP2
 	&not-at-end-lo ( ~- )
 JMP2r
@@ -212,8 +212,8 @@ JMP2r
 	DUP2 .play-pos/hi LDZ2 GTH2 ?&dont-restart
 		restart-file
 		DUP2 ZERO2 EQU2 ?&done-loop
-	&dont-restart ( hi* ~> hi* )
-	&loop
+	&dont-restart ( hi* ~+ hi* )
+	&loop ( hi* ~+ hi* )
 		read-next POP2
 		DUP2 .play-pos/hi LDZ2 GTH2 ?&loop
 	&done-loop ( hi* ~> )
@@ -230,11 +230,11 @@ JMP2r
 @channel-level ( buf* -- level )
 	LITr 00
 	NHBUFSIZE
-	&loop ( buf* -i* `max ~- buf* -i* sample `max )
+	&loop ( buf* -i* `max ~+ buf* -i* sample `max )
 		OVR2 LDA
 			DUP #80 GTH ?&pos
 				#00 SWP SUB
-			&pos ( buf* -i* sample `max ~- buf* -i* `max `sample )
+			&pos ( buf* -i* sample `max ~+ buf* -i* `max `sample )
 			#80 SUB STH
 		GTHkr LITr _&gth JCNr
 			SWPr
@@ -263,7 +263,7 @@ JMP2r
 			#04 ADD LDA2k SWP .data-len/lo STZ2
 			INC INC LDA2 SWP .data-len/hi STZ2
 			#00 JMP2r
-		&not-data ( filebuf* ~- filebuf* )
+		&not-data ( filebuf* ~+ filebuf* )
 		OVR #06 LDA2 ORA ?fail-metadata ( chunk length larger than 64k )
 		OVR #04 LDA2 SWP #fe AND ( chunk length )
 			.File0/length DEO2
@@ -275,7 +275,7 @@ JMP2r
 			OVR #08 LDA2 #0100 NEQ2 ?fail-audio-format ( wFormatTag )
 			OVR #0c LDA2 #44ac NEQ2 ?&warn-sample-rate ( nSamplesPerSec )
 			OVR #0e LDA2 ZERO2 EQU2 ?&not-fmt
-				&warn-sample-rate ( filebuf* ~- filebuf* )
+				&warn-sample-rate ( filebuf* ~+ filebuf* )
 				print: "Warning: 20 "WAV 20 "sample 20 "rate 20 "is 20 "not 20 "44,100 20 "Hz. 0a
 					2020 "Audio 20 "will 20 "play 20 "at 20 "incorrect 20 "speed! 0a00
 		&not-fmt ( filebuf* ~- keep-reading? )
