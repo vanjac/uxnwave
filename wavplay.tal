@@ -150,9 +150,9 @@ BRK
 		#0100 #0010 #00 fill-rect ( clear VU area )
 		.Screen/y DEO2
 	( VU meters )
-	DUP2 ;wavbuf-l-hi ADD2 channel-level #00 SWP #0008 #01 fill-rect
+	[ DUP2 ;wavbuf-l-hi ADD2 channel-level ] #00 SWP #0008 #01 fill-rect
 	#0030 .Screen/y DEO2
-	;wavbuf-r-hi ADD2 channel-level #00 SWP #0008 #01 fill-rect
+	[ ;wavbuf-r-hi ADD2 channel-level ] #00 SWP #0008 #01 fill-rect
 	#0008 .Screen/y DEO2
 	#0100 #0010 #00 fill-rect ( clear playhead area )
 	[ #0010 .Screen/y DEO2 ] [ LIT2 01 -Screen/auto DEO ]
@@ -230,15 +230,15 @@ JMP2r
 @channel-level ( buf* -- level )
 	LITr 00
 	NHBUFSIZE
-	&loop ( buf* -i* `max ~+ buf* -i* sample `max )
+	&loop ( buf* -i* `max ~- )
 		OVR2 LDA
 			DUP #80 GTH ?&pos
 				#00 SWP SUB
-			&pos ( buf* -i* sample `max ~+ buf* -i* `max `sample )
+			&pos
 			#80 SUB STH
 		GTHkr LITr _&gth JCNr
 			SWPr
-		&gth POPr ( buf* -i* `max `min ~- buf* -i* `max )
+		&gth POPr
 		SWP2 INC2 SWP2 INC2 ORAk ?&loop
 	POP2 POP2
 	STHr DUP ADD
@@ -275,7 +275,7 @@ JMP2r
 			OVR #08 LDA2 #0100 NEQ2 ?fail-audio-format ( wFormatTag )
 			OVR #0c LDA2 #44ac NEQ2 ?&warn-sample-rate ( nSamplesPerSec )
 			OVR #0e LDA2 ZERO2 EQU2 ?&not-fmt
-				&warn-sample-rate ( filebuf* ~+ filebuf* )
+				&warn-sample-rate
 				print: "Warning: 20 "WAV 20 "sample 20 "rate 20 "is 20 "not 20 "44,100 20 "Hz. 0a
 					2020 "Audio 20 "will 20 "play 20 "at 20 "incorrect 20 "speed! 0a00
 		&not-fmt ( filebuf* ~- keep-reading? )
@@ -331,22 +331,24 @@ JMP2r
 	STH
 	ZERO2 SWP2 SUB2 ( make negative )
 	&loop ( -length* `pix ~- )
+		ORAk ?&continue ( check first to handle 0 length )
+			POP2 POPr JMP2r
+		&continue
 		DUPr LITr -Screen/pixel DEOr
-		INC2 ORAk ?&loop
-	POP2 POPr
-JMP2r
+		INC2 !&loop
 
 @fill-rect ( width* height* pix -- )
 	LIT2 01 -Screen/auto DEO
 	STH
 	ZERO2 SWP2 SUB2 ( make negative )
 	&loop ( width* -height* `pix ~- )
+		ORAk ?&continue
+			POP2 POP2 POPr JMP2r
+		&continue
 		OVR2 STHkr draw-line
 		OVR2 .Screen/x DEI2 SWP2 SUB2 .Screen/x DEO2
 		.Screen/y DEI2k INC2 ROT DEO2
-		INC2 ORAk ?&loop
-	POP2 POP2 POPr
-JMP2r
+		INC2 !&loop
 
 @pointer-icn ( credit: Devine Lu Linvega )
 	80c0 e0f0 f8e0 1000
